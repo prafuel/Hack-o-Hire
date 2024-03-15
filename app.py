@@ -35,6 +35,7 @@ select_dataset = {
 
 
 df = pd.read_csv(select_dataset[dataset])
+st.dataframe(df.describe())
 
 # Overall
 feature = st.selectbox("Analysis is based on selected Columns", options=sorted(df.columns))
@@ -77,7 +78,10 @@ with col3:
 
 col1, col2 = st.columns(spec=2)
 with col1:
-    value = st.selectbox("Choose from following", options=sorted(df[feature].unique()))
+    value_options = sorted(df[feature].unique())
+    value_options.insert(0, "Overall")
+
+    value = st.selectbox("Choose from following", options=value_options)
 with col2:
     comparing_features = st.multiselect("Choose comparing features", options=columns_options)
 
@@ -87,26 +91,35 @@ st.write("--"*100)
 if comparing_features:  
     st.header("Comparing Features")
 
+    if value != "Overall":
+        df = df[df[feature] == value].copy()
+
     options_dict = {}
 
     for index,col in enumerate(st.columns(spec=comparing_features.__len__())):
         current_feature = comparing_features[index]
+        current_feature_options = list(df[current_feature].unique())
+        current_feature_options.insert(0, "Overall")
+
         with col:
-            option = st.selectbox(f"Feature name : {current_feature}", options=df[current_feature].unique())
+            option = st.selectbox(f"{current_feature}", options=current_feature_options)
             options_dict[current_feature] = option
+
     g = df.copy()
     for compare in comparing_features:
+        if options_dict[compare] == "Overall" : continue
         g = g[df[compare] == options_dict[compare]]
 
-    st.dataframe(g.reset_index(drop=True))
+    # st.dataframe(g.reset_index(drop=True))
 
-
+# Show Barplot
 if comparing_features:
     st.write("--"*100)
 
-    columns_options2 = columns_options.copy()
+    columns_options2 = comparing_features.copy()
     for item in list(options_dict.keys()):
-        columns_options2.remove(item) 
+        if options_dict[item] == "Overall" : continue
+        columns_options2.remove(item)
 
     st.header("Show Barplot")
     col1, col2 = st.columns(spec=2)
