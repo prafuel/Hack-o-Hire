@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 import time
+import seaborn as snb
 
 
 import plotly.express as px
@@ -28,7 +29,7 @@ st.title("Analysis of Anomaly in Various Datasets")
 
 radio = st.sidebar.radio(
     "Select Working page",
-    options=['Overall', 'Feature Wise', 'Outlier Analysis']
+    options=['Overall', 'Feature Analysis', 'Outlier Analysis']
 )
 
 
@@ -41,7 +42,14 @@ select_dataset = {
 
 
 df = pd.read_csv(select_dataset[dataset])
-st.dataframe(df.describe())
+col1, col2 = st.columns(spec=2)
+with col2:
+    st.write("Describe Dataframe")
+    st.dataframe(df.describe())
+with col1:
+    df_corr = df[df.describe().columns].corr()
+    st.plotly_chart(px.density_heatmap(df_corr, title="Heatmap"))
+
 feature = st.selectbox("Analysis is based on selected Columns", options=sorted(df.columns))
 
 # Overall
@@ -68,7 +76,7 @@ if radio == "Overall":
             st.dataframe(series.sort_values(by='count', ascending=False))
 
 # feature wise
-if radio == "Feature Wise":
+if radio == "Feature Analysis":
     st.header("Feature wise")
     columns_options = list(df.columns)
     # columns_options.remove(feature)
@@ -110,28 +118,38 @@ if radio == "Feature Wise":
             with col:
                 option = st.selectbox(f"{current_feature}", options=current_feature_options)
                 options_dict[current_feature] = option
-
+            
         g = df.copy()
         for compare in comparing_features:
             if options_dict[compare] == "Overall" : continue
             g = g[df[compare] == options_dict[compare]]
+        
+        # st.dataframe(g.reset_index(drop=True)[comparing_features])
 
-        st.dataframe(g.reset_index(drop=True)[comparing_features])
-
-    # Compare Plot here
+    # Create Plot here
     if comparing_features:
         st.write("--"*100)
-
+        st.header("Create plot here")
         columns_options2 = comparing_features.copy()
         for item in list(options_dict.keys()):
             if options_dict[item] == "Overall" : continue
             columns_options2.remove(item)
 
-        st.header("Compare plot here")
-        col1, col2 = st.columns(spec=2)
+        selected = st.selectbox("Select from following", options=columns_options2, key=index)
 
+        col1, col2 = st.columns(spec=2)
         with col1:
-            selected = st.selectbox("Select from following", options=columns_options2)
+            st.write("Bar plot")
             st.plotly_chart(get_bar(g[selected].value_counts().reset_index()))
+
+            st.write("Scatter plot")
+            st.plotly_chart(px.scatter(g[selected].value_counts().reset_index(), x=g[selected].value_counts().reset_index().columns[0], y='count'))
         with col2:
-            st.dataframe(g[selected].value_counts().reset_index())
+            # st.dataframe(g[selected].value_counts().reset_index())
+            pass
+
+
+if radio == 'Outlier Analysis':
+    st.header("Outlier Analysis")
+    g = df[feature].value_counts().reset_index()
+    st.plotly_chart(px.scatter(g, x=feature, y='count'))
