@@ -4,6 +4,20 @@ import numpy as np
 import time
 import seaborn as snb
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+import google.generativeai as genai
+genai.configure(api_key=os.environ['GEMINI_API_TOKEN'])
+
+model = genai.GenerativeModel('gemini-pro')
+
+def get_insight(df:pd.DataFrame, x_label:str, y_label:str):
+    prompt = f'''{np.array(df)} based on the provided array, your task is to analys it in term of business point of view, by considering x_lable={x_label} which is feature1, and y_label={y_label} which is number of sold product at that price, give me insight on it in following format: 1] <insight point>, give at least 4 point of analysis and next 2-3 points for solution'''
+    result = model.generate_content(prompt)
+    return result.text.replace("*","")
+
 
 import plotly.express as px
 def get_line(df: pd.DataFrame):
@@ -74,6 +88,10 @@ if radio == "Overall":
             st.plotly_chart(get_line(series))
 
             st.dataframe(series.sort_values(by='count', ascending=False))
+        
+        if st.button("Get Insights"):
+                st.code(f'''
+                x_label = {feature} y_label = Count\n{get_insight(series, feature, 'count')}''')
 
 # feature wise
 if radio == "Feature Analysis":
@@ -141,12 +159,16 @@ if radio == "Feature Analysis":
         with col1:
             st.write("Bar plot")
             st.plotly_chart(get_bar(g[selected].value_counts().reset_index()))
-
-            st.write("Scatter plot")
-            st.plotly_chart(px.scatter(g[selected].value_counts().reset_index(), x=g[selected].value_counts().reset_index().columns[0], y='count'))
+            
         with col2:
-            # st.dataframe(g[selected].value_counts().reset_index())
-            pass
+            # g count
+            g_count = g[selected].value_counts().reset_index()
+            st.write("Scatter plot")
+            st.plotly_chart(px.scatter(g_count, x=g_count.columns[0], y='count'))
+
+        if st.button("Get Insights"):
+                with st.spinner("Loading Please wait"):
+                    st.code(f'''x_label = {selected} y_label = Count\n{get_insight(g_count,selected,'count')}''')
 
 
 if radio == 'Outlier Analysis':
